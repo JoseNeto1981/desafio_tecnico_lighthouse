@@ -1,0 +1,55 @@
+-- Tratando a tabela para conseguir acessar melhor os dados
+
+CREATE OR REPLACE TABLE LH_NAUTICALS.QUESTAO6.VENDAS_TRATADO AS
+SELECT
+    ID,
+    ID_CLIENT,
+    TRY_TO_NUMBER(ID_PRODUCT) AS ID_PRODUCT,
+    TRY_TO_NUMBER(QTD) AS QTD,
+    TRY_TO_NUMBER(TOTAL, 38, 2) AS VALOR_VENDA,
+    TRY_TO_DATE(C6) AS DATA_VENDA
+FROM LH_NAUTICALS.QUESTAO4.VENDAS_REAL
+WHERE TRY_TO_NUMBER(ID_PRODUCT) IS NOT NULL;
+
+
+-- Criando a tabela calendário
+CREATE OR REPLACE TABLE LH_NAUTICALS.QUESTAO6.DIM_CALENDARIO AS
+WITH datas AS (
+    SELECT
+        MIN(DATA_VENDA) AS data_min,
+        MAX(DATA_VENDA) AS data_max
+    FROM LH_NAUTICALS.QUESTAO6.VENDAS_TRATADO
+)
+SELECT
+    DATEADD(day, SEQ4(), data_min) AS DATA_CALENDARIO,
+    DAYOFWEEKISO(DATEADD(day, SEQ4(), data_min)) AS ORDEM_DIA_SEMANA,
+    CASE DAYOFWEEKISO(DATEADD(day, SEQ4(), data_min))
+        WHEN 1 THEN 'Segunda-feira'
+        WHEN 2 THEN 'Terça-feira'
+        WHEN 3 THEN 'Quarta-feira'
+        WHEN 4 THEN 'Quinta-feira'
+        WHEN 5 THEN 'Sexta-feira'
+        WHEN 6 THEN 'Sábado'
+        WHEN 7 THEN 'Domingo'
+    END AS NOME_DIA_SEMANA
+FROM datas,
+TABLE(GENERATOR(ROWCOUNT => 10000))
+WHERE DATEADD(day, SEQ4(), data_min) <= data_max;
+
+-- Criando a tabela de vendas diarias
+CREATE OR REPLACE TABLE LH_NAUTICALS.QUESTAO6.VENDAS_DIARIAS AS
+SELECT
+    DATA_VENDA,
+    SUM(VALOR_VENDA) AS TOTAL_DIA
+FROM LH_NAUTICALS.QUESTAO6.VENDAS_TRATADO
+GROUP BY DATA_VENDA;
+
+-- Left Join; Media final com duas casas decimais
+SELECT
+    c.nome_dia_semana,
+    ROUND(AVG(COALESCE(v.TOTAL_DIA, 0)), 2) AS media_vendas
+FROM LH_NAUTICALS.QUESTAO6.DIM_CALENDARIO c
+LEFT JOIN LH_NAUTICALS.QUESTAO6.VENDAS_DIARIAS v
+    ON c.data_calendario = v.DATA_VENDA
+GROUP BY c.nome_dia_semana, c.ordem_dia_semana
+ORDER BY media_vendas ASC;

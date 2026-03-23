@@ -1,0 +1,22 @@
+import pandas as pd
+import os 
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from snowflake.snowpark import Session
+
+conn = {
+    "account": os.getenv("account"),
+    "user": os.getenv("user"),
+    "password": os.getenv("password"),
+    "role": "ACCOUNTADMIN",
+    "warehouse": "COMPUTE_WH",
+    "database": "LH_NAUTICALS"
+}
+
+session = Session.builder.configs(conn).create()
+
+
+df_snowpark = session.table("LH_NAUTICALS.QUESTAO3.custos_importacao")
+df_pandas = df_snowpark.to_pandas()
